@@ -1,0 +1,9 @@
+
+{
+  "name": "EcoChef AI: Gestión Inteligente de Cocina",
+  "description": "Un asistente de cocina con IA que usa Gemini para escanear ingredientes, rastrear caducidad, sugerir recetas de desperdicio cero y monitorear tu impacto ambiental.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
