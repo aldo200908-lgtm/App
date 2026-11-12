@@ -1,0 +1,28 @@
+name: Publish MusicLab Audio Diagnostics APK
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - '.github/workflows/musiclab-alpha03-diagnostics-publish.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch diagnostic APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p apk
+          gh run download 43313456567 --repo "$GITHUB_REPOSITORY" --name MusicLab-Alpha-03-Diagnostico-APK --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/MusicLab-Alpha-03-Diagnostico.apk
+          file apk/MusicLab-Alpha-03-Diagnostico.apk
+      - name: Create direct-release APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create musiclab-alpha03-diagnostico apk/MusicLab-Alpha-03-Diagnostico.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "MusicLab Alpha 03 - Diagnostico (Android ARM64)" --notes "Version de diagnostico: muestra el error real de carga de audio, permite copiar detalles y reintentar. No garantiza el acceso a streams de YouTube." --latest=false
