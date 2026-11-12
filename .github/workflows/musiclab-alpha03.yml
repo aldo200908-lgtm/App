@@ -1,4 +1,4 @@
-name: MusicLab Alpha 03 - Diagnostico HTTP
+name: MusicLab Alpha 03 - Audio Native HTTP Bridge
 on:
   push:
     branches: [musiclab-alpha01-build]
@@ -134,6 +134,9 @@ jobs:
           s = s[:start] + replacement + s[end:]
           p.write_text(s)
           PY
+      - name: Use Dart HTTP stream bridge for YouTube audio
+        working-directory: musiclab03
+        run: python3 proxy_patch.py
       - name: Background audio manifest
         working-directory: musiclab03
         run: python3 tool/configure_android.py
@@ -152,7 +155,7 @@ jobs:
       - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
-          name: MusicLab-Alpha-03-HTTP-APK
+          name: MusicLab-Alpha-03-Proxy-APK
           path: musiclab03/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
           if-no-files-found: error
