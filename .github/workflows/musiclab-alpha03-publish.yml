@@ -1,0 +1,29 @@
+name: Publish MusicLab Alpha 03 direct APK
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - '.github/workflows/musiclab-alpha03-publish.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified Alpha 03 APK artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p apk
+          gh run download 43311500403 --repo "$GITHUB_REPOSITORY" --name MusicLab-Alpha-03-YouTubeAudio-APK --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/MusicLab-Alpha-03.apk
+          file apk/MusicLab-Alpha-03.apk
+          ls -lh apk/MusicLab-Alpha-03.apk
+      - name: Publish APK to public GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create musiclab-alpha03 apk/MusicLab-Alpha-03.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "MusicLab Alpha 03 (APK Android ARM64)" --notes "Compilación de prueba de MusicLab Alpha 03 con reproducción experimental de audio. Aviso: la reproducción de YouTube no está garantizada por tratarse de un método no oficial." --latest=false
