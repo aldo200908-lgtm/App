@@ -1,0 +1,10 @@
+name: MusicLab APK verification
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'MusicLab temporary build branch ready'
