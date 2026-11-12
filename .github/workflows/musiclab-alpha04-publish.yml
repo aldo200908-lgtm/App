@@ -1,0 +1,37 @@
+name: Publish MusicLab Alpha 04 direct APK
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - ".github/workflows/musiclab-alpha04-publish.yml"
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check build and retrieve APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in $(seq 1 60); do
+            status=$(gh api repos/"$GITHUB_REPOSITORY"/actions/runs/43320425908 --jq '.status')
+            conclusion=$(gh api repos/"$GITHUB_REPOSITORY"/actions/runs/43320425908 --jq '.conclusion')
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" != "success" ]; then echo "Build failed: $conclusion"; exit 1; fi
+              break
+            fi
+            sleep 15
+          done
+          mkdir -p apk
+          gh run download 43320425908 --repo "$GITHUB_REPOSITORY" --name MusicLab-Alpha-04-Stable-APK --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/MusicLab-Alpha-04-Estable.apk
+          file apk/MusicLab-Alpha-04-Estable.apk
+      - name: Publish direct GitHub APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create musiclab-alpha04-estable apk/MusicLab-Alpha-04-Estable.apk --repo "$GITHUB_REPOSITORY" --title "MusicLab Alpha 04 - fuentes de audio estables" --notes "YouTube Music se abre oficialmente para evitar errores de reproducción del extractor. El audio en segundo plano dentro de MusicLab corresponde a Audius, Jamendo, radio y archivos locales. YouTube Music puede exigir Premium para reproducción en segundo plano." --latest=false
