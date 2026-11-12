@@ -1,4 +1,4 @@
-name: MusicLab Alpha 03 - Diagnostico audio
+name: MusicLab Alpha 03 - Diagnostico HTTP
 on:
   push:
     branches: [musiclab-alpha01-build]
@@ -79,6 +79,58 @@ jobs:
           s=s.replace(old,new)
           p.write_text(s)
           PY
+      - name: Probe YouTube audio URLs before opening Android player
+        working-directory: musiclab03
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/catalog.dart')
+          s = p.read_text()
+          start=s.index('  Future<Uri> resolveYouTubeAudio(String videoId) async {')
+          end=s.index('\n  Future<List<Song>> audius(',start)
+          replacement="""  Future<Uri> resolveYouTubeAudio(String videoId) async {
+    final manifest = await _yt.videos.streams
+        .getManifest(videoId).timeout(const Duration(seconds: 28));
+    final streams = manifest.audioOnly.toList();
+    if (streams.isEmpty) {
+      throw StateError('YouTube no ofrece una pista de audio accesible.');
+    }
+    // Prefer formats Android can normally decode; fall back to alternative
+    // available streams only when the server confirms that the URL works.
+    streams.sort((a, b) {
+      final aMp4 = a.container.toString().toLowerCase().contains('mp4') ? 1 : 0;
+      final bMp4 = b.container.toString().toLowerCase().contains('mp4') ? 1 : 0;
+      if (aMp4 != bMp4) return bMp4.compareTo(aMp4);
+      return b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond);
+    });
+    final attempts = <String>[];
+    for (final candidate in streams.take(4)) {
+      final name = '${candidate.container} (${candidate.audioCodec})';
+      try {
+        final request = http.Request('GET', candidate.url)
+          ..headers['Range'] = 'bytes=0-1';
+        final response = await _client.send(request)
+            .timeout(const Duration(seconds: 8));
+        // Do not download or store any audio data for the probe.
+        final subscription = response.stream.listen((_) {});
+        await subscription.cancel();
+        attempts.add('$name: HTTP ${response.statusCode}');
+        if (response.statusCode == 200 || response.statusCode == 206) {
+          return candidate.url;
+        }
+      } catch (e) {
+        attempts.add('$name: ${e.runtimeType}');
+      }
+    }
+    throw StateError(
+      'YouTube rechazó la reproducción de audio. Resultado de las fuentes: '
+      '${attempts.join('; ')}. No hay una pista accesible para Android.',
+    );
+  }
+"""
+          s = s[:start] + replacement + s[end:]
+          p.write_text(s)
+          PY
       - name: Background audio manifest
         working-directory: musiclab03
         run: python3 tool/configure_android.py
@@ -97,7 +149,7 @@ jobs:
       - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
-          name: MusicLab-Alpha-03-Diagnostico-APK
+          name: MusicLab-Alpha-03-HTTP-APK
           path: musiclab03/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
           if-no-files-found: error
