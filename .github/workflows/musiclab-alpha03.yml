@@ -1,4 +1,4 @@
-name: MusicLab Alpha 03 (Experimental YouTube Audio)
+name: MusicLab Alpha 03 - Diagnostico audio
 on:
   push:
     branches: [musiclab-alpha01-build]
@@ -34,6 +34,51 @@ jobs:
         run: |
           flutter create --project-name musiclab --org com.aptitudlabs --platforms android .
           rm -f test/widget_test.dart
+      - name: Enable detailed playback diagnostics
+        working-directory: musiclab03
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/music_player.dart')
+          s = p.read_text()
+          s = s.replace('  String? error;\n', '  String? error;\n  String? errorDetails;\n')
+          s = s.replace('  bool get isPlaying => player.playing;', '  bool get isPlaying => player.playing && error == null;')
+          s = s.replace("      error = 'La fuente no permitió reproducir esta pista.';", "      errorDetails = 'Error nativo: ${e.runtimeType}: ${e.toString()}';\n      error = 'El reproductor ha rechazado el audio.';")
+          s = s.replace('    error = null;\n    loading = true;', '    error = null;\n    errorDetails = null;\n    loading = true;')
+          s = s.replace('    try {\n      final song = queue[index];', "    var stage = 'Iniciando';\n    try {\n      final song = queue[index];")
+          s = s.replace('      final uri = song.source == MusicSource.youtube', "      stage = song.source == MusicSource.youtube ? 'Obtener pista de YouTube' : 'Preparar pista';\n      final uri = song.source == MusicSource.youtube")
+          s = s.replace('      await player.setAudioSource(', "      stage = 'Abrir pista con Android';\n      await player.setAudioSource(")
+          s = s.replace("      error = 'No se pudo abrir el audio. En YouTube puede deberse a restricciones o errores 403. Prueba otra pista.';", "      errorDetails = 'Etapa: $stage\\nTipo: ${e.runtimeType}\\n${e.toString()}';\n      error = 'No se pudo reproducir: revisa el diagnóstico.';\n      await player.stop();")
+          s = s.replace('    if (isPlaying) {\n      await player.pause();', '    if (error != null) {\n      await _startIndex(currentIndex);\n    } else if (isPlaying) {\n      await player.pause();')
+          p.write_text(s)
+          p = Path('lib/main.dart')
+          s = p.read_text()
+          s = s.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\nimport 'package:flutter/services.dart';")
+          old="                if (player.error != null) Text(player.error!, style: const TextStyle(color: Colors.amber, fontSize: 12)),"
+          new="""                if (player.error != null) Text(player.error!, style: const TextStyle(color: Colors.amber, fontSize: 12)),
+                if (player.error != null) TextButton.icon(
+                  onPressed: () {
+                    final details = player.errorDetails ?? player.error!;
+                    showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(
+                      title: const Text('Diagnóstico del audio'),
+                      content: SingleChildScrollView(child: SelectableText(details)),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cerrar')),
+                        FilledButton(onPressed: () {
+                          Clipboard.setData(ClipboardData(text: details));
+                          Navigator.pop(dialogContext);
+                        }, child: const Text('Copiar')),
+                      ],
+                    ));
+                  },
+                  icon: const Icon(Icons.bug_report_outlined),
+                  label: const Text('Ver diagnóstico'),
+                ),"""
+          if old not in s:
+              raise Exception('Player error indicator not found in main.dart')
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
       - name: Background audio manifest
         working-directory: musiclab03
         run: python3 tool/configure_android.py
@@ -52,7 +97,7 @@ jobs:
       - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
-          name: MusicLab-Alpha-03-YouTubeAudio-APK
+          name: MusicLab-Alpha-03-Diagnostico-APK
           path: musiclab03/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
           if-no-files-found: error
