@@ -1,0 +1,58 @@
+name: MusicLab Alpha 03 (Experimental YouTube Audio)
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - 'musiclab03/**'
+      - '.github/workflows/musiclab-alpha03.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack MusicLab Alpha 03
+        run: |
+          cd musiclab03
+          base64 -d source.tar.xz.b64 > source.tar.xz
+          tar -xJf source.tar.xz
+          rm source.tar.xz
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.9'
+          cache: true
+      - name: Flutter Android template
+        working-directory: musiclab03
+        run: |
+          flutter create --project-name musiclab --org com.aptitudlabs --platforms android .
+          rm -f test/widget_test.dart
+      - name: Background audio manifest
+        working-directory: musiclab03
+        run: python3 tool/configure_android.py
+      - name: Resolve dependencies
+        working-directory: musiclab03
+        run: flutter pub get
+      - name: Analyzer
+        working-directory: musiclab03
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Tests
+        working-directory: musiclab03
+        run: flutter test
+      - name: Build Android ARM64
+        working-directory: musiclab03
+        run: flutter build apk --debug --target-platform android-arm64
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicLab-Alpha-03-YouTubeAudio-APK
+          path: musiclab03/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
