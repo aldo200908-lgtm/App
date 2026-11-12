@@ -1,10 +1,42 @@
-name: MusicLab APK verification
+name: MusicLab Alpha 01 - APK
 on:
   push:
     branches: [musiclab-alpha01-build]
+    paths:
+      - 'musiclab/**'
+      - '.github/workflows/musiclab-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  verify:
+  apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
-      - uses: actions/checkout@v4
-      - run: echo 'MusicLab temporary build branch ready'
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Create Android project
+        run: flutter create --platforms android --org com.aptitudlabs --project-name musiclab musiclab
+      - name: Configure Android
+        run: cd musiclab && python3 tool/configure_android.py
+      - name: Dependencies
+        run: cd musiclab && flutter pub get
+      - name: Build debug APK
+        run: cd musiclab && flutter build apk --debug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicLab-Alpha-01-APK
+          path: musiclab/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
