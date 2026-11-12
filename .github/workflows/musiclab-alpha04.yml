@@ -1,0 +1,58 @@
+name: MusicLab Alpha 04 - Stable Audio APK
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - "musiclab04/**"
+      - ".github/workflows/musiclab-alpha04.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack Alpha 04
+        run: |
+          cd musiclab04
+          base64 -d source.tar.xz.b64 > source.tar.xz
+          tar -xJf source.tar.xz
+          rm source.tar.xz
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.9"
+          cache: true
+      - name: Generate Android
+        working-directory: musiclab04
+        run: |
+          flutter create --project-name musiclab --org com.aptitudlabs --platforms android .
+          rm -f test/widget_test.dart
+      - name: Configure background playback
+        working-directory: musiclab04
+        run: python3 tool/configure_android.py
+      - name: Dependencies
+        working-directory: musiclab04
+        run: flutter pub get
+      - name: Analyze
+        working-directory: musiclab04
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Tests
+        working-directory: musiclab04
+        run: flutter test
+      - name: Build APK ARM64
+        working-directory: musiclab04
+        run: flutter build apk --debug --target-platform android-arm64
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicLab-Alpha-04-Stable-APK
+          path: musiclab04/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
