@@ -1,0 +1,28 @@
+name: Publish MusicLab Alpha 03 HTTP Bridge APK
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - '.github/workflows/musiclab-alpha03-proxy-publish.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get compiled Alpha 03 HTTP bridge APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p apk
+          gh run download 43317907506 --repo "$GITHUB_REPOSITORY" --name MusicLab-Alpha-03-Proxy-APK --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/MusicLab-Alpha-03-Puente-Audio.apk
+          file apk/MusicLab-Alpha-03-Puente-Audio.apk
+          ls -lh apk/MusicLab-Alpha-03-Puente-Audio.apk
+      - name: Publish standalone APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create musiclab-alpha03-puente-http apk/MusicLab-Alpha-03-Puente-Audio.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "MusicLab Alpha 03 - puente HTTP experimental" --notes "APK ARM64 de prueba. Intenta utilizar una fuente StreamAudioSource en Dart para transmitir a just_audio las fuentes accesibles. No garantiza que YouTube permita reproducir el audio: sigue siendo experimental." --latest=false
