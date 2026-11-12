@@ -164,14 +164,14 @@ class _LibraryHomeState extends State<LibraryHome> {
 
   Future<void> addFiles() async {
     try {
-      final picked = await FilePicker.platform.pickFiles(
-        type: FileType.audio, allowMultiple: true, withData: false,
+      final picked = await FilePicker.pickFiles(
+        type: FileType.audio,
       );
-      if (picked == null) return;
+      if (picked.isEmpty) return;
       final dir = Directory('${(await getApplicationDocumentsDirectory()).path}/songs');
       await dir.create(recursive: true);
       int added = 0;
-      for (final item in picked.files) {
+      for (final item in picked) {
         if (item.path == null) continue;
         final original = File(item.path!);
         if (!await original.exists()) continue;
