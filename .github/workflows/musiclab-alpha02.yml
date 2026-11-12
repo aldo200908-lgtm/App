@@ -35,6 +35,23 @@ jobs:
       - name: Generate Android platform
         working-directory: musiclab02
         run: flutter create --project-name musiclab --org com.aptitudlabs --platforms android .
+      - name: Fix compatibility with file_picker 13 and Flutter generated test
+        working-directory: musiclab02
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/main.dart')
+          s = p.read_text()
+          s = s.replace('Slider(value: pos, max: total > 0 ? total : 1,', 'Slider(value: pos, max: total > 0 ? total : 1.0,')
+          p.write_text(s)
+          p = Path('lib/music_library.dart')
+          s = p.read_text()
+          s = s.replace('FilePicker.platform.pickFiles(type: FileType.audio, allowMultiple: true)', 'FilePicker.pickFiles(type: FileType.audio)')
+          s = s.replace('if (selection == null) return 0;', 'if (selection.isEmpty) return 0;')
+          s = s.replace('for (final selected in selection.files) {', 'for (final selected in selection) {')
+          p.write_text(s)
+          Path('test/widget_test.dart').unlink(missing_ok=True)
+          PY
       - name: Android permissions + background audio
         working-directory: musiclab02
         run: python3 tool/configure_android.py
