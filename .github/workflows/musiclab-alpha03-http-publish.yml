@@ -1,0 +1,27 @@
+name: Publish MusicLab Alpha 03 HTTP Diagnosis APK
+on:
+  push:
+    branches: [musiclab-alpha01-build]
+    paths:
+      - '.github/workflows/musiclab-alpha03-http-publish.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve compiled APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p apk
+          gh run download 43315509423 --repo "$GITHUB_REPOSITORY" --name MusicLab-Alpha-03-HTTP-APK --dir apk
+          test -s apk/app-debug.apk
+          mv apk/app-debug.apk apk/MusicLab-Alpha-03-HTTP-Prueba.apk
+          file apk/MusicLab-Alpha-03-HTTP-Prueba.apk
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create musiclab-alpha03-http-diagnostico apk/MusicLab-Alpha-03-HTTP-Prueba.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "MusicLab Alpha 03 - diagnostico de fuentes HTTP" --notes "Version experimental: comprueba el codigo HTTP de la fuente antes de reproducir; prueba opciones de audio disponibles y muestra claramente fuentes bloqueadas. No garantiza reproducir audio de YouTube." --latest=false
