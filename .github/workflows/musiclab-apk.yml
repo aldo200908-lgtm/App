@@ -1,4 +1,4 @@
-name: MusicLab Alpha 01 - APK
+name: MusicLab Alpha 01 - APK ARM64 optimizada
 on:
   push:
     branches: [musiclab-alpha01-build]
@@ -32,11 +32,11 @@ jobs:
       - name: Dependencies
         run: cd musiclab && flutter pub get
       - name: Build debug APK
-        run: cd musiclab && flutter build apk --debug
+        run: cd musiclab && flutter build apk --release --target-platform android-arm64
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MusicLab-Alpha-01-APK
-          path: musiclab/build/app/outputs/flutter-apk/app-debug.apk
+          name: MusicLab-Alpha-01-ARM64-APK
+          path: musiclab/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
           if-no-files-found: error
